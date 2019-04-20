@@ -4,7 +4,6 @@ using System.Text;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
-using System.Media;
 
 namespace C8
 {
@@ -14,15 +13,13 @@ namespace C8
         const int G_WIDTH = 64;
         const int G_HEIGHT = 32;
 
+        // Default game path
         public string gamePath = "";
 
+        // Objects
         public C8Graphics display;                     // Graphics object
         public uint[] key = new uint[16];              // Array to store key presses
-
-        Random rnd = new Random();
-
-        // Insert path to "beep.wav" below
-        SoundPlayer player = new SoundPlayer(@"C:\\C8\\beep.wav");
+        Random rnd = new Random();                     // Random object
 
         // Using uint for the registers as it makes it easier to use the bitwise operators
         private uint opcode;                            // The current opcode
@@ -107,8 +104,8 @@ namespace C8
             CPUCycle();
 
             if (tims != 0)
-            {  
-                player.Play();
+            {
+                Console.Beep();
             }
         }
 
