@@ -15,7 +15,7 @@ namespace C8
             InitializeComponent();
 
             // Create the timer
-            c8timer = new System.Timers.Timer(10); // Timer is 100Hz
+            c8timer = new System.Timers.Timer(5); // Timer is 200Hz
             c8timer.Elapsed += new System.Timers.ElapsedEventHandler(OnTimedEvent);
         }
 
@@ -176,7 +176,7 @@ namespace C8
                 myC8Core.display.Clear();
 
                 // Run the mainloop
-                c8timer.Enabled = true;
+                //c8timer.Enabled = true;
             }
         }
 

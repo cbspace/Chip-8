@@ -56,28 +56,6 @@ namespace C8
             InitRegs();
         }
 
-        /* 
-        //Load test data
-        public void LoadTest()
-        {
-            byte[] test_data = {
-                0x60, 0x01, // Set v0 to 1
-                0x62, 0x02, // Set v2 to 2
-                0xF0, 0x29, // Set I to '1' sprite
-                0xD1, 0x15, // Draw the 1 at 0,0
-                0xD2, 0x15, // Draw the 1 at 2,0
-                0x00, 0x00, 
-                0x00, 0x00,
-                0x00, 0x00
-            };
-    
-                for (int a = 0; a < test_data.Length; a++)
-                {
-                    mem[0x200 + a] = test_data[a];
-                }
-        }
-        */
-
         // Load a new ROM
         public void LoadRom()
         {
