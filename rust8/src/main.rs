@@ -11,8 +11,14 @@ fn main() {
 
     let rom_code = load_file("../roms/test.c8");
     match rom_code {
-        Ok(_) => println!("Ok"),
-        Err(_) => println!("Err")
+        Ok(bytes) => {
+            let mut address = 0x200;
+            for byte in bytes {
+                memory[address] = byte;
+                address += 1;
+            }
+        },
+        Err(error) => println!("Error: {}", error)
     };
 }
 
