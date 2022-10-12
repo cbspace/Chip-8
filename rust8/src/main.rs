@@ -1,7 +1,31 @@
+use gtk::prelude::*;
+use gtk::{Application, ApplicationWindow};
+
 use std::fs::File;
 use std::io;
 
 fn main() {
+    
+    let app = Application::builder()
+    .application_id("cbspace.chip8")
+    .build();
+    
+    app.connect_activate(|app| {
+        let win = ApplicationWindow::builder()
+        .application(app)
+        .default_width(320)
+        .default_height(240)
+        .title("Chip-8")
+        .build();
+        
+        win.show_all();
+    });
+    
+    run_emulator();
+    app.run();
+}
+
+fn run_emulator() {
     let mut pc: u16 = 0x200;
     let mut vreg: Vec<u8> = vec![0; 16];
     let mut ireg: u16 = 0;
@@ -11,7 +35,6 @@ fn main() {
 
     load_font_set(&mut memory);
 
-    //let rom_contents = load_file("../roms/test.c8", &mut memory);
     match load_file("../roms/test.c8", &mut memory) {
         Ok(()) => {},
         Err(error) => println!("Error: {}", error)
