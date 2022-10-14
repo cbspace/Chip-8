@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow};
+use gtk::{Application, ApplicationWindow, Menu};
 
 use std::fs::File;
 use std::io;
@@ -7,22 +7,26 @@ use std::io;
 fn main() {
     
     let app = Application::builder()
-    .application_id("cbspace.chip8")
-    .build();
+        .application_id("cbspace.chip8")
+        .build();
     
     app.connect_activate(|app| {
-        let win = ApplicationWindow::builder()
+        build_ui(&app);
+    });
+    
+    run_emulator();
+    app.run();
+}
+
+fn build_ui(app: &gtk::Application) {
+    let win = ApplicationWindow::builder()
         .application(app)
         .default_width(320)
         .default_height(240)
         .title("Chip-8")
         .build();
-        
-        win.show_all();
-    });
-    
-    run_emulator();
-    app.run();
+
+    win.show_all();
 }
 
 fn run_emulator() {
