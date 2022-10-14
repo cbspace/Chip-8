@@ -42,18 +42,13 @@ fn run_emulator() {
 }
 
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
-    let file_read_result = std::fs::read(file_path);
-    match file_read_result {
-        Ok(bytes) => {
-            let mut address = 0x200;
-            for byte in bytes {
-                memory[address] = byte;
-                address += 1;
-            }
-            Ok(())
-        },
-        Err(error) => Err(error)
+    let bytes = std::fs::read(file_path)?;
+    let mut address = 0x200;
+    for byte in bytes {
+        memory[address] = byte;
+        address += 1;
     }
+    Ok(())
 }
 
 fn load_font_set(memory: &mut Vec<u8>) {
