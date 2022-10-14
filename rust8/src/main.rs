@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Menu};
+use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem};
 
 use std::fs::File;
 use std::io;
@@ -19,14 +19,30 @@ fn main() {
 }
 
 fn build_ui(app: &gtk::Application) {
-    let win = ApplicationWindow::builder()
+    let window = ApplicationWindow::builder()
         .application(app)
         .default_width(320)
         .default_height(240)
         .title("Chip-8")
         .build();
 
-    win.show_all();
+    let v_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let menu_bar = MenuBar::new();
+    
+    let file = MenuItem::with_label("File");
+    let menu = Menu::new();
+    let open = MenuItem::with_label("Open");
+    menu.append(&open);
+    file.set_submenu(Some(&menu));
+
+    let about = MenuItem::with_label("About");
+
+    menu_bar.append(&file);
+    menu_bar.append(&about);
+    v_box.pack_start(&menu_bar, false, false, 0);
+    window.add(&v_box);
+
+    window.show_all();
 }
 
 fn run_emulator() {
