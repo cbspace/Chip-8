@@ -1,8 +1,6 @@
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
 use glib::clone;
-
-use std::fs::File;
 use std::io;
 
 fn main() {
@@ -117,19 +115,51 @@ fn load_font_set(memory: &mut Vec<u8>) {
 }
 
 fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
-    let instruction: u16 = ((memory[*pc as usize] as u16) << 8) + memory[(*pc + 1) as usize] as u16;
+    let ins: u16 = ((memory[*pc as usize] as u16) << 8) + memory[(*pc + 1) as usize] as u16;
     let n1: u8 = (memory[*pc as usize] as u8) >> 4;
     let n2: u8 = (memory[*pc as usize] as u8) & 0x0f;
     let n3: u8 = (memory[(*pc + 1) as usize] as u8) >> 4;
     let n4: u8 = (memory[(*pc + 1) as usize] as u8) & 0x0f;
-    println!("{:#06x}", instruction);
+    println!("{:#06x}", ins);
     println!("");
 
-    match n1 {
-        1 => { *pc = instruction & 0x0fff },        // 1NNN - Jump to NNN
-        6 => { vreg[n2 as usize] = (n3 << 4) + n4;  // 6XNN - Set VX to NN
-               *pc += 2; 
-             },
+    match ins & 0xf000 {
+        0x0000 => { 
+            match ins & 0x0fff {
+                0x000 => *pc += 2,         // 0NNN Call RCA 1802 program at address NNN
+                0x0E0 => *pc += 2,         // 00E0 Clear the screen
+                0x0EE => {                 // 00EE Return from subroutine
+                    let stack_value = stack.pop();
+                    match stack_value {
+                        Some(v) => *pc = v + 2,
+                        None => { println!("Error: Stack Underflow");
+                                  *pc += 2;
+                        }
+                    } 
+                }, 
+                _ => { println!("Error: Unknown Instruction");
+                       *pc += 2;
+                }
+            }
+        },
+        0x1000 => *pc = ins & 0x0fff,        // 1NNN - Jump to NNN
+        0x2000 => {  },        // 2NNN -
+        0x3000 => {  },        // 3NNN -
+        0x4000 => {  },        // 4NNN -
+        0x5000 => {  },        // 5NNN -
+        0x6000 => {            // 6XNN - Set VX to NN
+                    vreg[n2 as usize] = (ins & 0x00ff) as u8; 
+                    *pc += 2; 
+                  },
+        0x7000 => {  },        // 7NNN -
+        0x8000 => {  },        // 8NNN -
+        0x9000 => {  },        // 9NNN -
+        0xA000 => {  },        // ANNN -
+        0xB000 => {  },        // BNNN -
+        0xC000 => {  },        // CNNN -
+        0xD000 => {  },        // DNNN -
+        0xE000 => {  },        // ENNN -
+        0xF000 => {  },        // FNNN -
         _ => {}
     }
 }
