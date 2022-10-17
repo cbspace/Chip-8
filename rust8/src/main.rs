@@ -74,6 +74,11 @@ fn run_emulator() {
         Ok(()) => println!("Loaded ROM: {}", file_path),
         Err(error) => println!("Error: {}", error)
     };
+
+    for i in 0..10 {
+        println!("{:#06x}", pc);
+        cpu_cycle(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
+    }
 }
 
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
@@ -111,6 +116,20 @@ fn load_font_set(memory: &mut Vec<u8>) {
     }
 }
 
-fn cpu_cycle() {
+fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
+    let instruction: u16 = ((memory[*pc as usize] as u16) << 8) + memory[(*pc + 1) as usize] as u16;
+    let n1: u8 = (memory[*pc as usize] as u8) >> 4;
+    let n2: u8 = (memory[*pc as usize] as u8) & 0x0f;
+    let n3: u8 = (memory[(*pc + 1) as usize] as u8) >> 4;
+    let n4: u8 = (memory[(*pc + 1) as usize] as u8) & 0x0f;
+    println!("{:#06x}", instruction);
+    println!("");
 
+    match n1 {
+        1 => { *pc = instruction & 0x0fff },        // 1NNN - Jump to NNN
+        6 => { vreg[n2 as usize] = (n3 << 4) + n4;  // 6XNN - Set VX to NN
+               *pc += 2; 
+             },
+        _ => {}
+    }
 }
