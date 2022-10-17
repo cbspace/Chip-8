@@ -475,6 +475,7 @@ dependencies = [
 name = "rust8"
 version = "0.1.0"
 dependencies = [
+ "glib",
  "gtk",
 ]
 

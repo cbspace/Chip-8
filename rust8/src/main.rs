@@ -1,5 +1,6 @@
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem};
+use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
+use glib::clone;
 
 use std::fs::File;
 use std::io;
@@ -14,34 +15,47 @@ fn main() {
         build_ui(&app);
     });
     
-    run_emulator();
     app.run();
 }
 
 fn build_ui(app: &gtk::Application) {
+    
+    let gtk_box = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .build();
+
     let window = ApplicationWindow::builder()
         .application(app)
         .default_width(320)
         .default_height(240)
         .title("Chip-8")
+        .child(&gtk_box)
         .build();
-
-    let v_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    
     let menu_bar = MenuBar::new();
     
-    let file = MenuItem::with_label("File");
-    let menu = Menu::new();
-    let open = MenuItem::with_label("Open");
-    menu.append(&open);
-    file.set_submenu(Some(&menu));
+    let emulator_menu = MenuItem::with_label("Emulator");
+    let about_menu = MenuItem::with_label("About");
 
-    let about = MenuItem::with_label("About");
+    let emulator_sub_menu = Menu::new();
+    let open_menu_item = MenuItem::with_label("Open ROM");
+    let quit_menu_item = MenuItem::with_label("Quit");
+    emulator_sub_menu.append(&open_menu_item);
+    emulator_sub_menu.append(&quit_menu_item);
 
-    menu_bar.append(&file);
-    menu_bar.append(&about);
-    v_box.pack_start(&menu_bar, false, false, 0);
-    window.add(&v_box);
+    open_menu_item.connect_activate(move |_| {
+        run_emulator();
+    });
 
+    quit_menu_item.connect_activate(clone!(@weak window => move |_| {
+        window.close();
+    }));
+
+    emulator_menu.set_submenu(Some(&emulator_sub_menu));
+    menu_bar.append(&emulator_menu);
+    menu_bar.append(&about_menu);
+
+    gtk_box.pack_start(&menu_bar, false, false, 0);
     window.show_all();
 }
 
@@ -55,8 +69,9 @@ fn run_emulator() {
 
     load_font_set(&mut memory);
 
-    match load_file("../roms/test.c8", &mut memory) {
-        Ok(()) => {},
+    let file_path = "../roms/test.c8";
+    match load_file(file_path, &mut memory) {
+        Ok(()) => println!("Loaded ROM: {}", file_path),
         Err(error) => println!("Error: {}", error)
     };
 }
