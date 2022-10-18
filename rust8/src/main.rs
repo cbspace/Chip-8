@@ -116,10 +116,10 @@ fn load_font_set(memory: &mut Vec<u8>) {
 
 fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
     let ins: u16 = ((memory[*pc as usize] as u16) << 8) + memory[(*pc + 1) as usize] as u16;
-    let n1: u8 = (memory[*pc as usize] as u8) >> 4;
-    let n2: u8 = (memory[*pc as usize] as u8) & 0x0f;
-    let n3: u8 = (memory[(*pc + 1) as usize] as u8) >> 4;
-    let n4: u8 = (memory[(*pc + 1) as usize] as u8) & 0x0f;
+    let n1: usize = (memory[*pc as usize] as usize) >> 4;
+    let n2: usize = (memory[*pc as usize] as usize) & 0x0f;
+    let n3: usize = (memory[(*pc + 1) as usize] as usize) >> 4;
+    let n4: usize = (memory[(*pc + 1) as usize] as usize) & 0x0f;
     println!("{:#06x}", ins);
     println!("");
 
@@ -137,18 +137,26 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                         }
                     } 
                 }, 
-                _ => { println!("Error: Unknown Instruction");
+                _ => { println!("Error: Invalid Instruction");
                        *pc += 2;
                 }
             }
         },
         0x1000 => *pc = ins & 0x0fff,        // 1NNN - Jump to NNN
-        0x2000 => {  },        // 2NNN -
-        0x3000 => {  },        // 3NNN -
-        0x4000 => {  },        // 4NNN -
-        0x5000 => {  },        // 5NNN -
-        0x6000 => {            // 6XNN - Set VX to NN
-                    vreg[n2 as usize] = (ins & 0x00ff) as u8; 
+        0x2000 => { stack.push(*pc);         // 2NNN Call subroutine at address NNN
+                    *pc = ins & 0x0fff;
+                  },        
+        0x3000 => { *pc += if memory[n2] == (ins & 0xff) as u8 
+                    { 4 } else { 2 };        // 3XNN Skip next instruction if VX = NN   
+                  },                         
+        0x4000 => { *pc += if memory[n2] != (ins & 0xff) as u8 
+                    { 4 } else { 2 };        // 4XNN Skip next instruction if VX != NN   
+                  },
+        0x5000 => { *pc += if memory[n2] == memory[n3]
+                    { 4 } else { 2 };        // 5XY0 Skip next instruction if VX = VY                    
+                  },
+        0x6000 => {                          // 6XNN - Set VX to NN
+                    vreg[n2] = (ins & 0x00ff) as u8; 
                     *pc += 2; 
                   },
         0x7000 => {  },        // 7NNN -
