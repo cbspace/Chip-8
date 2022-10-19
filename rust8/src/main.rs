@@ -2,9 +2,9 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
 use glib::clone;
 use std::io;
+use std::ops::Sub;
 
 fn main() {
-    
     let app = Application::builder()
         .application_id("cbspace.chip8")
         .build();
@@ -77,6 +77,27 @@ fn run_emulator() {
         println!("{:#06x}", pc);
         cpu_cycle(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
     }
+
+    //test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
+}
+
+fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
+    memory[0x200] = 0x80;
+    memory[0x201] = 0x15;
+    vreg[0] = 10;
+    vreg[1] = 4;
+    cpu_cycle(pc, vreg, ireg, memory, stack);
+    println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
+    println!("Expect {}", 10-4);
+    
+    *pc = 0x200;
+    memory[0x200] = 0x80;
+    memory[0x201] = 0x15;
+    vreg[0] = 4;
+    vreg[1] = 10;
+    cpu_cycle(pc, vreg, ireg, memory, stack);
+    println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
+    println!("Expect {}", (4+256)-10);
 }
 
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
@@ -159,8 +180,63 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                     vreg[n2] = (ins & 0x00ff) as u8; 
                     *pc += 2; 
                   },
-        0x7000 => {  },        // 7NNN -
-        0x8000 => {  },        // 8NNN -
+        0x7000 => {                         // 7XNN Add NN to VX (Carry flag not changed)  
+                    vreg[n2] = vreg[n2] + (ins & 0xff) as u8;
+                    *pc += 2; 
+                  },
+        0x8000 => { match n4 {
+                        0x0 => {            // 8XY0 Sets the value of VX to VY      
+                            vreg[n2] = vreg[n3];
+                            *pc += 2;
+                        },
+                        0x1 => {            // 8XY1 Sets VX to VX or VY (Bitwise OR operation) 
+                            vreg[n2] |= vreg[n3];
+                            *pc += 2;
+                        },
+                        0x2 => {            // 8XY2 Sets VX to VX & VY (Bitwise AND operation) 
+                            vreg[n2] &= vreg[n3];
+                            *pc += 2;
+                        },
+                        0x3 => {            // 8XY3 Sets VX to VX XOR VY (Bitwise OXR operation) 
+                            vreg[n2] ^= vreg[n3];
+                            *pc += 2;
+                        },
+                        0x4 => {            // 8XY4 Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't. 
+                            let sum: u16 = vreg[n2] as u16 + vreg[n3] as u16;
+                            vreg[0xf] = if sum > 255 { 1 } else { 0 };
+                            vreg[n2] = (sum % 0x100) as u8;
+                            *pc += 2;
+                        },
+                        0x5 => {            // 8XY5 VX = VX - VY. VF is set to 0 when there's a borrow, and 1 when there isn't.
+                            let difference: i16 = vreg[n2] as i16 - vreg[n3] as i16;
+                            if difference >= 0 {
+                                vreg[n2] = difference as u8;
+                                vreg[0xf] = 1;
+                            } else {
+                                vreg[n2] = (difference + 256) as u8;
+                                vreg[0xf] = 0;
+                            }
+                            *pc += 2;
+                        },
+                        0x6 => {            // 8XY6 Stores the least significant bit of VX in VF and then shifts VX to the right by 1 
+                            vreg[0xf] = vreg[n2] & 0x01;
+                            vreg[n2] >>= 1; 
+                            *pc += 2;
+                        },
+                        0x7 => {            // 8XY7 VX = VY - VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
+                            let difference: i16 = vreg[n3] as i16 - vreg[n2] as i16;
+                            if difference >= 0 {
+                                vreg[n2] = difference as u8;
+                                vreg[0xf] = 1;
+                            } else {
+                                vreg[n2] = (difference + 256) as u8;
+                                vreg[0xf] = 0;
+                            }
+                            *pc += 2;
+                        },
+                        _ => println!("Invalid Instruction: {:#06x}", ins)
+                  }
+        },
         0x9000 => {  },        // 9NNN -
         0xA000 => {  },        // ANNN -
         0xB000 => {  },        // BNNN -
