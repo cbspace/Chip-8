@@ -73,31 +73,31 @@ fn run_emulator() {
         Err(error) => println!("Error: {}", error)
     };
 
-    for i in 0..10 {
-        println!("{:#06x}", pc);
-        cpu_cycle(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
-    }
+    // for i in 0..10 {
+    //     println!("{:#06x}", pc);
+    //     cpu_cycle(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
+    // }
 
-    //test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
+    test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
 }
 
 fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
     memory[0x200] = 0x80;
-    memory[0x201] = 0x15;
-    vreg[0] = 10;
-    vreg[1] = 4;
+    memory[0x201] = 0x14;
+    vreg[0] = 200;
+    vreg[1] = 50;
     cpu_cycle(pc, vreg, ireg, memory, stack);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 10-4);
+    println!("Expect {}", 250);
     
     *pc = 0x200;
     memory[0x200] = 0x80;
-    memory[0x201] = 0x15;
-    vreg[0] = 4;
-    vreg[1] = 10;
+    memory[0x201] = 0x14;
+    vreg[0] = 200;
+    vreg[1] = 100;
     cpu_cycle(pc, vreg, ireg, memory, stack);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", (4+256)-10);
+    println!("Expect {}", 300-256);
 }
 
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
@@ -204,7 +204,7 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                         0x4 => {            // 8XY4 Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't. 
                             let sum: u16 = vreg[n2] as u16 + vreg[n3] as u16;
                             vreg[0xf] = if sum > 255 { 1 } else { 0 };
-                            vreg[n2] = (sum % 0x100) as u8;
+                            vreg[n2] = sum as u8;
                             *pc += 2;
                         },
                         0x5 => {            // 8XY5 VX = VX - VY. VF is set to 0 when there's a borrow, and 1 when there isn't.
