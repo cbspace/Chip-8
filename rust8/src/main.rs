@@ -2,7 +2,6 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
 use glib::clone;
 use std::io;
-use std::ops::Sub;
 
 fn main() {
     let app = Application::builder()
@@ -83,21 +82,21 @@ fn run_emulator() {
 
 fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
     memory[0x200] = 0x80;
-    memory[0x201] = 0x14;
-    vreg[0] = 200;
-    vreg[1] = 50;
+    memory[0x201] = 0x1E;
+    vreg[0] = 128;
+    vreg[1] = 10;
     cpu_cycle(pc, vreg, ireg, memory, stack);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 250);
+    println!("Expect {}", 0);
     
     *pc = 0x200;
     memory[0x200] = 0x80;
-    memory[0x201] = 0x14;
-    vreg[0] = 200;
-    vreg[1] = 100;
+    memory[0x201] = 0x1E;
+    vreg[0] = 64;
+    vreg[1] = 10;
     cpu_cycle(pc, vreg, ireg, memory, stack);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 300-256);
+    println!("Expect {}", 128);
 }
 
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
@@ -234,14 +233,23 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                             }
                             *pc += 2;
                         },
+                        0xE => {            // 8XYE Stores the most significant bit of VX in VF and then shifts VX to the left by 1 
+                            vreg[0xf] = (vreg[n2] & 0x80) >> 7;
+                            vreg[n2] <<= 1;
+                            *pc += 2;
+                        },
                         _ => println!("Invalid Instruction: {:#06x}", ins)
                   }
         },
-        0x9000 => {  },        // 9NNN -
-        0xA000 => {  },        // ANNN -
-        0xB000 => {  },        // BNNN -
-        0xC000 => {  },        // CNNN -
-        0xD000 => {  },        // DNNN -
+        0x9000 => { *pc += if memory[n2] != memory[n3]
+                    { 4 } else { 2 };       // 9XY0 Skips the next instruction if VX doesn't equal VY 
+                  },                        
+        0xA000 => { *ireg = ins & 0x0fff;
+                    *pc += 2;               // ANNN Set I to NNN
+                  },
+        0xB000 => {  },        // BNNN Jump to address NNN + V0
+        0xC000 => {  },        // CXNN Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+        0xD000 => {  },        // DXYN Draw a sprite at VX,YV that has a width of 8px and height of Npx
         0xE000 => {  },        // ENNN -
         0xF000 => {  },        // FNNN -
         _ => {}
