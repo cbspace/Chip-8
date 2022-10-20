@@ -2,6 +2,7 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
 use glib::clone;
 use std::io;
+use rand::prelude::*;
 
 fn main() {
     let app = Application::builder()
@@ -247,8 +248,10 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
         0xA000 => { *ireg = ins & 0x0fff;
                     *pc += 2;               // ANNN Set I to NNN
                   },
-        0xB000 => {  },        // BNNN Jump to address NNN + V0
-        0xC000 => {  },        // CXNN Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+        0xB000 => { *pc = (ins & 0x0fff) + vreg[0] as u16; },        // BNNN Jump to address NNN + V0
+        0xC000 => { let randon_number = rand::random::<u8>();
+                    vreg[n2] = randon_number & (ins & 0x00ff) as u8;
+                  },           // CXNN Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
         0xD000 => {  },        // DXYN Draw a sprite at VX,YV that has a width of 8px and height of Npx
         0xE000 => {  },        // ENNN -
         0xF000 => {  },        // FNNN -
