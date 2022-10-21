@@ -2,7 +2,25 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow, Menu, MenuBar, MenuItem, Orientation};
 use glib::clone;
 use std::io;
-use rand::prelude::*;
+
+// Memory Map
+// 0x000 to 0x1FF - Not used, can be used for font set
+// 0x050 to 0x0A0 - Used to store the built in 4x5 pixel font set
+// 0x200 to 0xFFF - Program ROM and work RAM
+
+// Key Map
+//
+// Key ID 0 to F              Keyboard Keys
+// -----------------         -----------------
+// | 1 | 2 | 3 | C |         | 1 | 2 | 3 | 4 |
+// | - | - | - | - |         | - | - | - | - |
+// | 4 | 5 | 6 | D |         | Q | W | E | R |
+// | - | - | - | - |         | - | - | - | - |
+// | 7 | 8 | 9 | E |         | A | S | D | F |
+// | - | - | - | - |         | - | - | - | - |
+// | A | 0 | B | F |         | Z | X | C | V |
+// -----------------         -----------------
+// No Key = 0xff
 
 fn main() {
     let app = Application::builder()
@@ -65,6 +83,10 @@ fn run_emulator() {
     let mut memory: Vec<u8> = vec![0; 0x10000];
     let mut stack: Vec<u16> = vec![];
 
+    let mut key_id:u8 = 0xff;
+    let mut delay_timer:u8 = 0x00;
+    let mut sound_timer:u8 = 0x00;
+
     load_font_set(&mut memory);
 
     let file_path = "../roms/test.c8";
@@ -78,24 +100,26 @@ fn run_emulator() {
     //     cpu_cycle(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
     // }
 
-    test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack);
+    test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack, &key_id, &mut delay_timer, &mut sound_timer);
 }
 
-fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
-    memory[0x200] = 0x80;
-    memory[0x201] = 0x1E;
-    vreg[0] = 128;
-    vreg[1] = 10;
-    cpu_cycle(pc, vreg, ireg, memory, stack);
+fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>, 
+                    key_id: &u8, delay_timer: &mut u8, sound_timer: &mut u8) 
+{
+    memory[0x200] = 0xC0;
+    memory[0x201] = 0xff;
+    vreg[0] = 0;
+    vreg[1] = 0;
+    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
     println!("Expect {}", 0);
     
     *pc = 0x200;
-    memory[0x200] = 0x80;
-    memory[0x201] = 0x1E;
-    vreg[0] = 64;
-    vreg[1] = 10;
-    cpu_cycle(pc, vreg, ireg, memory, stack);
+    memory[0x200] = 0xC0;
+    memory[0x201] = 0x0f;
+    vreg[0] = 0;
+    vreg[1] = 0;
+    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
     println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
     println!("Expect {}", 128);
 }
@@ -135,7 +159,9 @@ fn load_font_set(memory: &mut Vec<u8>) {
     }
 }
 
-fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>) {
+fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>, 
+             key_id: &u8, delay_timer: &mut u8, sound_timer: &mut u8) 
+{
     let ins: u16 = ((memory[*pc as usize] as u16) << 8) + memory[(*pc + 1) as usize] as u16;
     let n1: usize = (memory[*pc as usize] as usize) >> 4;
     let n2: usize = (memory[*pc as usize] as usize) & 0x0f;
@@ -144,7 +170,7 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
     println!("{:#06x}", ins);
     println!("");
 
-    match ins & 0xf000 {
+    match n1 {
         0x0000 => { 
             match ins & 0x0fff {
                 0x000 => *pc += 2,         // 0NNN Call RCA 1802 program at address NNN
@@ -167,13 +193,13 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
         0x2000 => { stack.push(*pc);         // 2NNN Call subroutine at address NNN
                     *pc = ins & 0x0fff;
                   },        
-        0x3000 => { *pc += if memory[n2] == (ins & 0xff) as u8 
+        0x3000 => { *pc += if vreg[n2] == (ins & 0xff) as u8 
                     { 4 } else { 2 };        // 3XNN Skip next instruction if VX = NN   
                   },                         
-        0x4000 => { *pc += if memory[n2] != (ins & 0xff) as u8 
+        0x4000 => { *pc += if vreg[n2] != (ins & 0xff) as u8 
                     { 4 } else { 2 };        // 4XNN Skip next instruction if VX != NN   
                   },
-        0x5000 => { *pc += if memory[n2] == memory[n3]
+        0x5000 => { *pc += if vreg[n2] == vreg[n3]
                     { 4 } else { 2 };        // 5XY0 Skip next instruction if VX = VY                    
                   },
         0x6000 => {                          // 6XNN - Set VX to NN
@@ -239,10 +265,12 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                             vreg[n2] <<= 1;
                             *pc += 2;
                         },
-                        _ => println!("Invalid Instruction: {:#06x}", ins)
+                        _ => { println!("Invalid Instruction: {:#06x}", ins);
+                               *pc += 2;
+                             }
                   }
         },
-        0x9000 => { *pc += if memory[n2] != memory[n3]
+        0x9000 => { *pc += if vreg[n2] != vreg[n3]
                     { 4 } else { 2 };       // 9XY0 Skips the next instruction if VX doesn't equal VY 
                   },                        
         0xA000 => { *ireg = ins & 0x0fff;
@@ -253,8 +281,29 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                     vreg[n2] = randon_number & (ins & 0x00ff) as u8;
                   },           // CXNN Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
         0xD000 => {  },        // DXYN Draw a sprite at VX,YV that has a width of 8px and height of Npx
-        0xE000 => {  },        // ENNN -
-        0xF000 => {  },        // FNNN -
+        0xE000 => { match ins & 0x00ff {
+                        0x009E => { // EX9E Skips the next instruction if the key stored in VX is pressed.
+                            *pc += if vreg[n2] == *key_id
+                            { 4 } else { 2 }
+                        },
+                        0x00A1 => { // EXA1 Skips the next instruction if the key stored in VX isn't pressed.
+                            *pc += if vreg[n2] != *key_id
+                            { 4 } else { 2 }
+                        },
+                        _ => { println!("Invalid Instruction: {:#06x}", ins);
+                               *pc += 2;
+                             }
+                  }
+        },
+        0xF000 => { match ins & 0x00ff {
+                        0x07 => { // FX07 Sets VX to the value of the delay timer.
+                            vreg[n2] = *delay_timer;
+                            *pc += 2;
+                        },
+                        0x0A => {} // FX0A A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
+                        _ => {}
+                  }
+        },
         _ => {}
     }
 }
