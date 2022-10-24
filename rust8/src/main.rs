@@ -301,6 +301,22 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                             *pc += 2;
                         },
                         0x0A => {} // FX0A A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
+                        0x15 => { // FX15 Sets the delay timer to VX.                                      
+                            *delay_timer = vreg[n2];
+                            *pc += 2;
+                        },
+                        0x18 => { // FX18 Sets the sound timer to VX.                                      
+                            *sound_timer = vreg[n2];
+                            *pc += 2;
+                        },
+                        0x1E => { // FX1E Add Vx to I                                      
+                            *ireg += vreg[n2] as u16;
+                            *pc += 2;
+                        },
+                        0x29 => { // FX29 Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.                                      
+                            *ireg = 0x0050 + vreg[n2] as u16 * 5;
+                            *pc += 2;
+                        },
                         _ => {}
                   }
         },
