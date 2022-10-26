@@ -103,27 +103,6 @@ fn run_emulator() {
     test_instruction(&mut pc, &mut vreg, &mut ireg, &mut memory, &mut stack, &key_id, &mut delay_timer, &mut sound_timer);
 }
 
-fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>, 
-                    key_id: &u8, delay_timer: &mut u8, sound_timer: &mut u8) 
-{
-    memory[0x200] = 0xC0;
-    memory[0x201] = 0xff;
-    vreg[0] = 0;
-    vreg[1] = 0;
-    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
-    println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 0);
-    
-    *pc = 0x200;
-    memory[0x200] = 0xC0;
-    memory[0x201] = 0x0f;
-    vreg[0] = 0;
-    vreg[1] = 0;
-    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
-    println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 128);
-}
-
 fn load_file(file_path: &str, memory: &mut Vec<u8>) -> Result<(), io::Error> {
     let bytes = std::fs::read(file_path)?;
     let mut address = 0x200;
@@ -170,7 +149,7 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
     println!("{:#06x}", ins);
     println!("");
 
-    match n1 {
+    match ins & 0xf000 {
         0x0000 => { 
             match ins & 0x0fff {
                 0x000 => *pc += 2,    // 0NNN Call RCA 1802 program at address NNN
@@ -327,9 +306,39 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                     *ireg = 0x0050 + vreg[n2] as u16 * 5;
                     *pc += 2;
                 },
-                _ => {}
+                0x33 => {               // FX33 Stores the binary-coded decimal representation of VX in I to I + 2 
+                    let mut number: u8 = vreg[n2];
+                    memory[*ireg as usize] = number / 100;
+                    number %= 100;
+                    memory[(*ireg + 1) as usize] = number / 10;
+                    number %= 10;
+                    memory[(*ireg + 2) as usize] = number;
+                }
+                _ => println!("Invalid Instruction: {:#06x}", ins)
             }
         },
-        _ => {}
+        _ => println!("Invalid Instruction: {:#06x}", ins)
     }
+}
+
+fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>, 
+    key_id: &u8, delay_timer: &mut u8, sound_timer: &mut u8) 
+{
+    memory[0x200] = 0xf0;
+    memory[0x201] = 0x33;
+    vreg[0] = 170;
+    *ireg = 0;
+    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
+    println!("V0: {}, I1: {}, I2: {}, I3: {}", vreg[0], memory[0], memory[1], memory[2]);
+    //println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
+    println!("Expect {}", 170);
+
+    *pc = 0x200;
+    memory[0x200] = 0xC0;
+    memory[0x201] = 0x0f;
+    vreg[0] = 0;
+    vreg[1] = 0;
+    cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
+    println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
+    println!("Expect {}", 128);
 }
