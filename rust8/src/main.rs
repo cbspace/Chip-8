@@ -279,7 +279,7 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                     { 4 } else { 2 }
                 },
                 _ => { println!("Invalid Instruction: {:#06x}", ins);
-                        *pc += 2;
+                       *pc += 2;
                 }
             }
         },
@@ -313,25 +313,46 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
                     memory[(*ireg + 1) as usize] = number / 10;
                     number %= 10;
                     memory[(*ireg + 2) as usize] = number;
+                    *pc += 2;
+                },
+                0x55 => {
+                                        // FX55 Stores V0 to VX (including VX) in memory starting at address I
+                    for offset in 0..=n2 {
+                        memory[*ireg as usize + offset] = vreg[offset];
+                    }
+                    *pc += 2;
+                },
+                0x65 => {
+                                        // FX65 Fills V0 to VX (including VX) with values from memory starting at address I
+                    for offset in 0..=n2 {
+                        vreg[offset] = memory[*ireg as usize + offset];
+                    }
+                    *pc += 2;
+                },
+                _ =>  { println!("Invalid Instruction: {:#06x}", ins); 
+                        *pc += 2;
                 }
-                _ => println!("Invalid Instruction: {:#06x}", ins)
             }
         },
-        _ => println!("Invalid Instruction: {:#06x}", ins)
+        _ => { println!("Invalid Instruction: {:#06x}", ins);
+               *pc += 2;
+        }
     }
 }
 
 fn test_instruction(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u8>, stack: &mut Vec<u16>, 
     key_id: &u8, delay_timer: &mut u8, sound_timer: &mut u8) 
 {
-    memory[0x200] = 0xf0;
-    memory[0x201] = 0x33;
-    vreg[0] = 170;
+    memory[0x200] = 0xf2;
+    memory[0x201] = 0x65;
+    memory[0] = 170;
+    memory[1] = 5;
+    memory[2] = 233;
+
     *ireg = 0;
     cpu_cycle(pc, vreg, ireg, memory, stack, key_id, delay_timer, sound_timer);
-    println!("V0: {}, I1: {}, I2: {}, I3: {}", vreg[0], memory[0], memory[1], memory[2]);
-    //println!("V0: {}, V1: {}, VF: {}", vreg[0], vreg[1], vreg[0xf]);
-    println!("Expect {}", 170);
+    println!("v[0]: {}, v[1]: {}, v[2]: {}", vreg[0], vreg[1], vreg[2]);
+    println!("Expect {} {} {}", 170, 5, 233);
 
     *pc = 0x200;
     memory[0x200] = 0xC0;
