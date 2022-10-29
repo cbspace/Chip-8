@@ -267,7 +267,15 @@ fn cpu_cycle(pc: &mut u16, vreg: &mut Vec<u8>,ireg: &mut u16, memory: &mut Vec<u
             let randon_number = rand::random::<u8>();
             vreg[n2] = randon_number & (ins & 0x00ff) as u8;
         },
-        0xD000 => {  },                 // DXYN Draw a sprite at VX,YV that has a width of 8px and height of Npx
+        0xD000 => { 
+                    // DXYN Draw a sprite at VX,YV that has a width of 8px and height of Npx
+                    // Each row of 8 pixels is read as bit-coded starting from memory location I; 
+                    // I value doesn’t change after the execution of this instruction. 
+                    // VF is set to 1 if any screen pixels are flipped from set to unset when the 
+                    // sprite is drawn, and to 0 if that doesn’t happen
+            
+            *pc += 2;
+         },
         0xE000 => { 
             match ins & 0x00ff {
                 0x009E => {             // EX9E Skips the next instruction if the key stored in VX is pressed.
